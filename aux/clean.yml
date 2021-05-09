@@ -1,0 +1,19 @@
+- name: Test preparation
+  hosts: migrator
+  tasks:
+    - name: clean pre workloads
+      ansible.builtin.include_tasks: clean_pre_workload.yml
+      with_items: objs
+      loop: "{{ query('sequence', 'start=1 end=1') }}"
+      loop_control:
+        loop_var: loop_index
+      vars:
+        experiment: "1"
+
+    - name: clean workloads
+      ansible.builtin.include_tasks: clean_workload.yml
+      when: False
+      with_items: objs
+      loop: "{{ query('sequence', 'start=1 end=1') }}"
+      loop_control:
+        loop_var: loop_index

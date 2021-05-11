@@ -29,6 +29,7 @@ import matplotlib.font_manager as font_manager
 import matplotlib.dates
 from matplotlib.dates import SECONDLY,WEEKLY,MONTHLY, DateFormatter, rrulewrapper, RRuleLocator
 import numpy as np
+import matplotlib.dates as mdates
 
 import pandas as pd
 import matplotlib as mpl
@@ -38,21 +39,21 @@ import warnings; warnings.filterwarnings(action='once')
 #
 # How many times we will execute the experiments
 #
-sample_iterations = 2
+sample_iterations = 10
 sample_data_path = "./sample_data/"
 
 #
 # Two lists of playbooks we will execute before and after the main run list executes
 # these lists are useful i.e. in the case of seeding an environment or cleaning up after.
 #
-sample_run_pre = []#"/home/ccamacho/chart/aux/seed.yml"]
-sample_run_post = []#"/home/ccamacho/chart/aux/clean.yml"]
+sample_run_pre = ["/home/ccamacho/chart/aux/seed.yml"]
+sample_run_post = [] # "/home/ccamacho/chart/aux/clean.yml"]
 
 #
 # This is a list of playbooks we will execute to generate the graph details
 #
 sample_run_list = [
-    {'resource': 'networks', 'type': 'export', 'playbook': 'export_networks.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
+    {'resource': 'networks', 'type': 'export', 'playbook': 'export_networks.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': True},
     {'resource': 'networks', 'type': 'import', 'playbook': 'import_networks.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': True},
     {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
     {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
@@ -70,23 +71,29 @@ run_migrations = True
 
 def main():
     """Execute all the methods."""
+    global_times = []
+    clean_local_folders()
     for resource in sample_run_list:
         if resource['graph']:
             with open(os.path.join(sample_data_path, resource['type']+"_"+resource['resource']+'.csv'), 'w') as the_file:
                 the_file.write('"usage","bw","execution_time","flavor"')
+            # seed
+            run_extra_playbooks(sample_run_pre)
             for experiment_index in range(sample_iterations):
-                # seed
-                run_extra_playbooks(sample_run_pre, experiment_index)
                 # run
-                print(render_tasks_data(sample_data_path, resource, experiment_index))
-                # clean
-                run_extra_playbooks(sample_run_post, experiment_index)
-
+                global_times.append(render_tasks_data(sample_data_path, resource, experiment_index))
                 render_gantt_chart(sample_data_path, resource, experiment_index)
-            #render_box_plot(sample_data_path, resource, experiment_index)
+            # render_box_plot(sample_data_path, resource, experiment_index)
+            # clean
+            run_extra_playbooks(sample_run_post)
 
 
-def run_extra_playbooks(playbook_list, experiment_index):
+def clean_local_folders():
+    private_data_dir = '/tmp/osm/'
+    Path(private_data_dir).mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(private_data_dir, ignore_errors = True)
+
+def run_extra_playbooks(playbook_list):
     """Execute Ansible runner for additional playbooks."""
 
     local_inventory = {
@@ -105,11 +112,12 @@ def run_extra_playbooks(playbook_list, experiment_index):
     clouds = '/etc/openstack/clouds.yaml'
     private_data_dir = '/tmp/osm/'
     Path(private_data_dir).mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(private_data_dir, ignore_errors = False)
 
     private_data_dir_env = os.path.join(private_data_dir, 'env/')
     private_data_dir_osm = os.path.join(private_data_dir, 'osm-data/')
     private_data_dir_artifacts = os.path.join(private_data_dir, 'artifacts/')
+
+    shutil.rmtree(private_data_dir_artifacts, ignore_errors = True)
 
     Path(os.path.join(home, 'os-migrate-data')).mkdir(parents=True, exist_ok=True)
     Path(private_data_dir_env).mkdir(parents=True, exist_ok=True)
@@ -137,7 +145,6 @@ def run_extra_playbooks(playbook_list, experiment_index):
     }
 
     extravars = {
-        'experiment': experiment_index,
         'ansible_connection': 'local',
         'os_migrate_src_release': '16',
         'os_migrate_dst_release': '16',
@@ -198,11 +205,12 @@ def render_tasks_data(sample_data_path, resource, experiment_index):
     clouds = '/etc/openstack/clouds.yaml'
     private_data_dir = '/tmp/osm/'
     Path(private_data_dir).mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(private_data_dir, ignore_errors = False)
 
     private_data_dir_env = os.path.join(private_data_dir, 'env/')
     private_data_dir_osm = os.path.join(private_data_dir, 'osm-data/')
     private_data_dir_artifacts = os.path.join(private_data_dir, 'artifacts/')
+
+    shutil.rmtree(private_data_dir_artifacts, ignore_errors = True)
 
     Path(os.path.join(home, 'os-migrate-data')).mkdir(parents=True, exist_ok=True)
     Path(private_data_dir_env).mkdir(parents=True, exist_ok=True)
@@ -340,13 +348,16 @@ def render_gantt_chart(sample_data_path, resource, experiment_index):
             textlist=gfile.readlines()
     except:
         return
-#
+
+    all_dates = []
+
     for tx in textlist:
         if not tx.startswith('#'):
             ylabel,startdate,enddate=tx.split(',')
             ylabels.append((ylabel[:25] + '..').replace('\n','') if len(ylabel) > 25 else ylabel.replace('\n',''))
             customDates.append([_create_date(startdate.replace('\n','')),_create_date(enddate.replace('\n',''))])
-
+            all_dates.append(_create_date(startdate.replace('\n','')))
+            all_dates.append(_create_date(enddate.replace('\n','')))
     ilen=len(ylabels)
     pos = np.arange(0.5,ilen*0.5+0.5,0.5)
     task_dates = {}
@@ -363,19 +374,22 @@ def render_gantt_chart(sample_data_path, resource, experiment_index):
     ax.set_ylim(ymin = -0.1, ymax = ilen*0.5+0.5)
     ax.grid(color = 'g', linestyle = ':')
     ax.xaxis_date()
-    rule = rrulewrapper(SECONDLY, interval=1)
-    loc = RRuleLocator(rule)
-    #formatter = DateFormatter("%d-%b '%y")
-    formatter = DateFormatter("%s")
 
-    ax.xaxis.set_major_locator(loc)
+    locator = mdates.AutoDateLocator(minticks=10, maxticks=15)
+    formatter = mdates.ConciseDateFormatter(locator)
+    ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
+    ax.set_xlim(min(all_dates),max(all_dates))
+
+    #plt.xticks(all_dates)
     labelsx = ax.get_xticklabels()
     plt.setp(labelsx, rotation=30, fontsize=10)
 
     font = font_manager.FontProperties(size='small')
-    ax.legend(loc=1,prop=font)
+    # No legend
+    #ax.legend(loc=1,prop=font)
 
+    plt.title((resource['type']+" "+resource['resource'] + " (" + str(experiment_index) + ")").upper())
     ax.invert_yaxis()
     fig.autofmt_xdate()
     plt.savefig(os.path.join(sample_data_path, str(experiment_index) + resource['resource'] + "_" +resource['type'] + '.svg'))

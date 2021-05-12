@@ -1,7 +1,7 @@
-- name: create osm_bench_net {{ experiment }}_{{ loop_index }}
+- name: create osm_bench_net {{ loop_index }}
   openstack.cloud.network:
     auth: "{{ item.auth }}"
-    name: osm_bench_net_{{ experiment }}_{{ loop_index }}
+    name: osm_bench_net_{{ loop_index }}
     # Apparently description is an unsupported param in Ansible even
     # though OpenStack supports it.
     # description: osm_bench_net test network
@@ -20,12 +20,12 @@
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
-- name: Create osm subnet {{ experiment }}_{{ loop_index }}
+- name: Create osm subnet {{ loop_index }}
   openstack.cloud.subnet:
     auth: "{{ item.auth }}"
     state: present
-    network_name: osm_bench_net_{{ experiment }}_{{ loop_index }}
-    name: osm_bench_subnet_{{ experiment }}_{{ loop_index }}
+    network_name: osm_bench_net_{{ loop_index }}
+    name: osm_bench_subnet_{{ loop_index }}
     cidr: 192.168.{{ loop_index }}.0/24
     dns_nameservers:
       - 10.11.5.19
@@ -43,11 +43,11 @@
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
-- name: Create security group {{ experiment }}_{{ loop_index }}
+- name: Create security group {{ loop_index }}
   openstack.cloud.security_group:
     auth: "{{ item.auth }}"
     state: present
-    name: osm_bench_security_group_{{ experiment }}_{{ loop_index }}
+    name: osm_bench_security_group_{{ loop_index }}
     description: OSM security group
     validate_certs: "{{ item.validate_certs }}"
     ca_cert: "{{ item.ca_cert }}"
@@ -60,10 +60,10 @@
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
-- name: Create security group rule {{ experiment }}_{{ loop_index }}
+- name: Create security group rule {{ loop_index }}
   openstack.cloud.security_group_rule:
     auth: "{{ item.auth }}"
-    security_group: osm_bench_security_group_{{ experiment }}_{{ loop_index }}
+    security_group: osm_bench_security_group_{{ loop_index }}
     remote_ip_prefix: 0.0.0.0/0
     validate_certs: "{{ item.validate_certs }}"
     ca_cert: "{{ item.ca_cert }}"
@@ -76,15 +76,15 @@
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
-- name: create osm_bench_router {{ experiment }}_{{ loop_index }}
+- name: create osm_bench_router {{ loop_index }}
   openstack.cloud.router:
     auth: "{{ item.auth }}"
-    name: osm_bench_router_{{ experiment }}_{{ loop_index }}
+    name: osm_bench_router_{{ loop_index }}
     state: present
     network: "{{ os_migrate_src_osm_router_external_network|default(omit) }}"
     interfaces:
-      - net: osm_bench_net_{{ experiment }}_{{ loop_index }}
-        subnet: osm_bench_subnet_{{ experiment }}_{{ loop_index }}
+      - net: osm_bench_net_{{ loop_index }}
+        subnet: osm_bench_subnet_{{ loop_index }}
         portip: 192.168.{{ loop_index }}.1
     validate_certs: "{{ item.validate_certs }}"
     ca_cert: "{{ item.ca_cert }}"
@@ -97,23 +97,23 @@
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
-- name: Create the key folder {{ experiment }}_{{ loop_index }}
+- name: Create the key folder {{ loop_index }}
   ansible.builtin.file:
     path: "{{ '~' | expanduser }}/ssh-ci"
     mode: 0700
     state: directory
 
-- name: Generate a keypair for the migration {{ experiment }}_{{ loop_index }}
+- name: Generate a keypair for the migration {{ loop_index }}
   # This will not regenerate the key if
   # it already exists
   community.crypto.openssh_keypair:
     path: "{{ '~' | expanduser }}/ssh-ci/id_rsa"
 
-- name: Create new keypair as osm_bench_key {{ experiment }}_{{ loop_index }}
+- name: Create new keypair as osm_bench_key {{ loop_index }}
   openstack.cloud.keypair:
     auth: "{{ item.auth }}"
     state: present
-    name: osm_bench_key_{{ experiment }}_{{ loop_index }}
+    name: osm_bench_key_{{ loop_index }}
     public_key_file: "{{ '~' | expanduser }}/ssh-ci/id_rsa.pub"
     validate_certs: "{{ item.validate_certs }}"
     ca_cert: "{{ item.ca_cert }}"
@@ -131,20 +131,20 @@
       client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
 
-- name: make sure test_inputs dir exists {{ experiment }}_{{ loop_index }}
+- name: make sure test_inputs dir exists {{ loop_index }}
   ansible.builtin.file:
     path: "{{ os_migrate_tests_tmp_dir }}/test_inputs"
     state: directory
 
-- name: fetch cirros image {{ experiment }}_{{ loop_index }}
+- name: fetch cirros image {{ loop_index }}
   ansible.builtin.get_url:
     url: https://download.cirros-cloud.net/0.4.0/cirros-0.4.0-x86_64-disk.img
     dest: "{{ os_migrate_tests_tmp_dir }}/test_inputs/cirros.img"
 
-- name: create osm_bench_image {{ experiment }}_{{ loop_index }}
+- name: create osm_bench_image {{ loop_index }}
   openstack.cloud.image:
     auth: "{{ os_migrate_src_auth }}"
-    name: osm_bench_image_{{ experiment }}_{{ loop_index }}
+    name: osm_bench_image_{{ loop_index }}
     filename: "{{ os_migrate_tests_tmp_dir }}/test_inputs/cirros.img"
     container_format: bare
     disk_format: raw

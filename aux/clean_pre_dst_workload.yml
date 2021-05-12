@@ -1,0 +1,142 @@
+# - name: Remove pre-workload test data {{ loop_index }}
+#   ansible.builtin.file:
+#     path: "{{ os_migrate_data_dir }}/{{ item }}"
+#     state: absent
+#   loop:
+#     - image_blobs
+#     - images.yml
+#     - networks.yml
+#     - routers.yml
+#     - security_group_rules.yml
+#     - security_groups.yml
+#     - subnets.yml
+
+- name: remove osm_image {{ loop_index }}
+  openstack.cloud.image:
+    auth: "{{ item.auth }}"
+    name: osm_image_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_key keypair {{ loop_index }}
+  openstack.cloud.keypair:
+    auth: "{{ item.auth }}"
+    state: absent
+    name: osm_key_{{ loop_index }}
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_router {{ loop_index }}
+  openstack.cloud.router:
+    auth: "{{ item.auth }}"
+    name: osm_router_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+    wait: yes
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_server_port {{ loop_index }}
+  openstack.cloud.port:
+    auth: "{{ item.auth }}"
+    name: osm_server_port_0
+    network: osm_net_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_subnet {{ loop_index }}
+  openstack.cloud.subnet:
+    auth: "{{ item.auth }}"
+    name: osm_subnet_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_net {{ loop_index }}
+  openstack.cloud.network:
+    auth: "{{ item.auth }}"
+    name: osm_net_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_security_group {{ loop_index }}
+  openstack.cloud.security_group:
+    auth: "{{ item.auth }}"
+    name: osm_security_group_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+
+- name: remove osm_security_group_rule {{ loop_index }}
+  openstack.cloud.security_group_rule:
+    auth: "{{ item.auth }}"
+    security_group: osm_security_group_{{ loop_index }}
+    state: absent
+    validate_certs: "{{ item.validate_certs }}"
+    ca_cert: "{{ item.ca_cert }}"
+    client_cert: "{{ item.client_cert }}"
+    client_key: "{{ item.client_key }}"
+  loop:
+    - auth: "{{ os_migrate_dst_auth }}"
+      validate_certs: "{{ os_migrate_dst_validate_certs|default(omit) }}"
+      ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
+      client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
+      client_key: "{{ os_migrate_dst_client_key|default(omit) }}"

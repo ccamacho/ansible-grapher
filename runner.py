@@ -39,61 +39,96 @@ import warnings; warnings.filterwarnings(action='once')
 #
 # How many times we will execute the experiments
 #
-sample_iterations = 10
+# This means that we will execute the os-migrate to
+# migrate [a, b, c, d] amount of resources x times
+sample_iterations = 2
+sample_iterations_list = [1, 2]
+
 sample_data_path = "./sample_data/"
 
 #
 # Two lists of playbooks we will execute before and after the main run list executes
 # these lists are useful i.e. in the case of seeding an environment or cleaning up after.
 #
-sample_run_pre = ["/home/ccamacho/chart/aux/seed.yml"]
-sample_run_post = [] # "/home/ccamacho/chart/aux/clean.yml"]
+sample_run_pre = [] # "/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/chart/aux/clean_dst.yml"]
+sample_run_pre_experiments = ["/home/ccamacho/chart/aux/seed.yml"]
+sample_run_post_experiment = ["/home/ccamacho/chart/aux/clean_dst.yml"]
+sample_run_post = ["/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/chart/aux/clean_dst.yml"]
 
 #
 # This is a list of playbooks we will execute to generate the graph details
 #
 sample_run_list = [
-    {'resource': 'networks', 'type': 'export', 'playbook': 'export_networks.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': True},
-    {'resource': 'networks', 'type': 'import', 'playbook': 'import_networks.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': True},
-    {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'routers', 'type': 'export', 'playbook': 'export_routers.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'routers', 'type': 'import', 'playbook': 'import_routers.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'security_groups', 'type': 'export', 'playbook': 'export_security_groups.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'security_groups', 'type': 'import', 'playbook': 'import_security_groups.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'security_group_rules', 'type': 'export', 'playbook': 'export_security_group_rules.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'security_group_rules', 'type': 'import', 'playbook': 'import_security_group_rules.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'workloads', 'type': 'export', 'playbook': 'export_workloads.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False},
-    {'resource': 'workloads', 'type': 'import', 'playbook': 'import_workloads.yml', 'timestamp_start': '', 'timestamp_stop': '', 'graph': False}
+    {'resource': 'networks', 'type': 'export', 'playbook': 'export_networks.yml', 'graph': True},
+    {'resource': 'networks', 'type': 'import', 'playbook': 'import_networks.yml', 'graph': True},
+    {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'graph': False},
+    {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'graph': False},
+    {'resource': 'routers', 'type': 'export', 'playbook': 'export_routers.yml', 'graph': False},
+    {'resource': 'routers', 'type': 'import', 'playbook': 'import_routers.yml', 'graph': False},
+    {'resource': 'security_groups', 'type': 'export', 'playbook': 'export_security_groups.yml', 'graph': False},
+    {'resource': 'security_groups', 'type': 'import', 'playbook': 'import_security_groups.yml', 'graph': False},
+    {'resource': 'security_group_rules', 'type': 'export', 'playbook': 'export_security_group_rules.yml', 'graph': False},
+    {'resource': 'security_group_rules', 'type': 'import', 'playbook': 'import_security_group_rules.yml', 'graph': False},
+    {'resource': 'workloads', 'type': 'export', 'playbook': 'export_workloads.yml', 'graph': False},
+    {'resource': 'workloads', 'type': 'import', 'playbook': 'import_workloads.yml', 'graph': False}
 ]
 
-run_migrations = True
+global_times = {}
+
 
 def main():
     """Execute all the methods."""
-    global_times = []
-    clean_local_folders()
+    # Initialize global_times
     for resource in sample_run_list:
-        if resource['graph']:
-            with open(os.path.join(sample_data_path, resource['type']+"_"+resource['resource']+'.csv'), 'w') as the_file:
-                the_file.write('"usage","bw","execution_time","flavor"')
-            # seed
-            run_extra_playbooks(sample_run_pre)
-            for experiment_index in range(sample_iterations):
-                # run
-                global_times.append(render_tasks_data(sample_data_path, resource, experiment_index))
-                render_gantt_chart(sample_data_path, resource, experiment_index)
-            # render_box_plot(sample_data_path, resource, experiment_index)
-            # clean
-            run_extra_playbooks(sample_run_post)
+        global_times[resource['type']+"_"+resource['resource']] = {}
+        for amount_resources in sample_iterations_list:
+            global_times[resource['type']+"_"+resource['resource']][amount_resources]=[]
+    print(global_times)
 
+
+    clean_local_folders()
+    run_extra_playbooks(sample_run_pre)
+
+    for amount_resources in sample_iterations_list:
+        # seed
+        run_extra_playbooks(sample_run_pre_experiments, amount_resources)
+
+
+        for resource in sample_run_list:
+            if resource['graph']:
+                for experiment_index in range(sample_iterations):
+                    # run
+                    global_times[resource['type']+"_"+resource['resource']][amount_resources].append(render_gantt_data(sample_data_path, resource, experiment_index, amount_resources))
+                    render_gantt_chart(sample_data_path, resource, experiment_index, amount_resources)
+                    if resource['type'] == "import":
+                        # We clean the destination tenant
+                        run_extra_playbooks(sample_run_post_experiment, amount_resources)
+
+    render_boxplot_data()
+    for key in global_times:
+        render_box_plot_chart(sample_data_path, key)
+    # clean
+    run_extra_playbooks(sample_run_post, max(sample_iterations_list))
+"""
+{'export_networks': {1: [], 2: []}, 'import_networks': {1: [], 2: []}, 'export_subnets': {1: [], 2: []}, 'import_subnets': {1: [], 2: []}, 'export_routers': {1: [], 2: []}, 'import_routers': {1: [], 2: []}, 'export_security_groups': {1: [], 2: []}, 'import_security_groups': {1: [], 2: []}, 'export_security_group_rules': {1: [], 2: []}, 'import_security_group_rules': {1: [], 2: []}, 'export_workloads': {1: [], 2: []}, 'import_workloads': {1: [], 2: []}}
+
+"""
+def render_boxplot_data():
+    # We parse each resource to be exported
+    for key in global_times:
+        with open(os.path.join(sample_data_path, key+'.csv'), 'w') as the_file:
+            the_file.write('"usage","bw","execution_time","flavor"'+ "\n")
+        for value in global_times[key]:
+            for time in global_times[key][value]:
+                with open(os.path.join(sample_data_path, key+'.csv'), 'a') as the_file2:
+                    the_file2.write("100,33," + str(time) + "," + str(value) + "\n")
 
 def clean_local_folders():
     private_data_dir = '/tmp/osm/'
     Path(private_data_dir).mkdir(parents=True, exist_ok=True)
     shutil.rmtree(private_data_dir, ignore_errors = True)
 
-def run_extra_playbooks(playbook_list):
+def run_extra_playbooks(playbook_list, amount_resources=1):
     """Execute Ansible runner for additional playbooks."""
 
     local_inventory = {
@@ -145,6 +180,7 @@ def run_extra_playbooks(playbook_list):
     }
 
     extravars = {
+        'amount_resources': amount_resources,
         'ansible_connection': 'local',
         'os_migrate_src_release': '16',
         'os_migrate_dst_release': '16',
@@ -183,7 +219,7 @@ def run_extra_playbooks(playbook_list):
         pre_runner_obj = None
         ansible_runner.utils.cleanup_artifact_dir(private_data_dir_artifacts, 1)
 
-def render_tasks_data(sample_data_path, resource, experiment_index):
+def render_gantt_data(sample_data_path, resource, experiment_index, amount_resources):
     """Execute Ansible runner."""
     #
     # Ansible configuration begins
@@ -238,7 +274,6 @@ def render_tasks_data(sample_data_path, resource, experiment_index):
     }
 
     extravars = {
-        'experiment': experiment_index,
         'ansible_connection': 'local',
         'os_migrate_src_release': '16',
         'os_migrate_dst_release': '16',
@@ -262,58 +297,56 @@ def render_tasks_data(sample_data_path, resource, experiment_index):
     # Playbooks execution begins
     #
 
-    if run_migrations:
+    # There is a gantt chart per experiment
+    with open(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_"+ resource['resource'] + "_" +resource['type'] + '.txt'), 'w') as the_file2:
+        the_file2.write('')
+    kwargs = {
+        'verbosity': 0,
+        'playbook': os.path.join(osm_playbooks_root, resource['playbook']),
+        'inventory': {'all': local_inventory},
+        'envvars': envvars,
+        'extravars': extravars,
+        'private_data_dir': private_data_dir
+    }
 
-        # There is a gantt chart per experiment
-        with open(os.path.join(sample_data_path, str(experiment_index) + resource['resource'] + "_" +resource['type'] + '.txt'), 'w') as the_file2:
-            the_file2.write('')
-        kwargs = {
-            'verbosity': 0,
-            'playbook': os.path.join(osm_playbooks_root, resource['playbook']),
-            'inventory': {'all': local_inventory},
-            'envvars': envvars,
-            'extravars': extravars,
-            'private_data_dir': private_data_dir
-        }
+    runner_obj = ansible_runner.interface.init_runner(**kwargs)
+    runner_obj.run()
 
-        runner_obj = ansible_runner.interface.init_runner(**kwargs)
-        runner_obj.run()
+    stdout = runner_obj.stdout.read()
+    events = list(runner_obj.events)
+    stats = runner_obj.stats
+    runner_obj = None
+    ansible_runner.utils.cleanup_artifact_dir(private_data_dir_artifacts, 1)
 
-        stdout = runner_obj.stdout.read()
-        events = list(runner_obj.events)
-        stats = runner_obj.stats
-        runner_obj = None
-        ansible_runner.utils.cleanup_artifact_dir(private_data_dir_artifacts, 1)
+    first_event = ''
+    last_event = ''
 
-        first_event = ''
-        last_event = ''
+    for event in events:
+        print('-------------')
+        if 'event_data' in event:
+            if 'duration' in event['event_data']:
+                if first_event == '':
+                    first_event = event['event_data']['start']
+                with open(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.txt'), 'a') as the_file2:
+                    the_file2.write(event['event_data']['task'] + "," + event['event_data']['start'] +"," + event['event_data']['end'] + "\n")
+                print("Task:" + event['event_data']['task'])
+                print("Created:" + event['created'])
+                print("Start:" + event['event_data']['start'])
+                print("End:" + event['event_data']['end'])
+                print("Duration:" + str(event['event_data']['duration']))
+                print(event)
+                last_event = event['event_data']['end']
+    print("Playbook started at:" + first_event)
+    print("Playbook ended at:" + last_event)
+    first_event_obj = dt.datetime.strptime(first_event, '%Y-%m-%dT%H:%M:%S.%f')
+    last_event_obj = dt.datetime.strptime(last_event, '%Y-%m-%dT%H:%M:%S.%f')
+    print((last_event_obj-first_event_obj).total_seconds())
 
-        for event in events:
-            print('-------------')
-            if 'event_data' in event:
-                if 'duration' in event['event_data']:
-                    if first_event == '':
-                        first_event = event['event_data']['start']
-                    with open(os.path.join(sample_data_path, str(experiment_index) + resource['resource'] + "_" +resource['type'] + '.txt'), 'a') as the_file2:
-                        the_file2.write(event['event_data']['task'] + "," + event['event_data']['start'] +"," + event['event_data']['end'] + "\n")
-                    print("Task:" + event['event_data']['task'])
-                    print("Created:" + event['created'])
-                    print("Start:" + event['event_data']['start'])
-                    print("End:" + event['event_data']['end'])
-                    print("Duration:" + str(event['event_data']['duration']))
-                    print(event)
-                    last_event = event['event_data']['end']
-        print("Playbook started at:" + first_event)
-        print("Playbook ended at:" + last_event)
-        first_event_obj = dt.datetime.strptime(first_event, '%Y-%m-%dT%H:%M:%S.%f')
-        last_event_obj = dt.datetime.strptime(last_event, '%Y-%m-%dT%H:%M:%S.%f')
-        print((last_event_obj-first_event_obj).total_seconds())
-
-        resource['playbook'].split('.')[0]
-        # Write the results to the gantt file
-        f = open("gantt_"+resource['playbook'].split('.')[0]+".txt", "a")
-        f.writelines(["See you soon!", "Over and out."])
-        f.close()
+    resource['playbook'].split('.')[0]
+    # Write the results to the gantt file
+    f = open("gantt_"+resource['playbook'].split('.')[0]+".txt", "a")
+    f.writelines(["See you soon!", "Over and out."])
+    f.close()
 
     #
     # The artifact dir must be cleaned on every execution
@@ -335,12 +368,12 @@ def _create_date(datetxt):
     return mdate
 
 
-def render_gantt_chart(sample_data_path, resource, experiment_index):
+def render_gantt_chart(sample_data_path, resource, experiment_index, amount_resources):
     """
         Create gantt charts with matplotlib
         Give file name.
     """
-    fname=os.path.join(sample_data_path, str(experiment_index) + resource['resource'] + "_" +resource['type'] + '.txt')
+    fname=os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.txt')
     ylabels = []
     customDates = []
     try:
@@ -389,14 +422,14 @@ def render_gantt_chart(sample_data_path, resource, experiment_index):
     # No legend
     #ax.legend(loc=1,prop=font)
 
-    plt.title((resource['type']+" "+resource['resource'] + " (" + str(experiment_index) + ")").upper())
+    plt.title((resource['type']+" "+resource['resource'] + " (" + str(amount_resources)+"_"+str(experiment_index) + ")").upper())
     ax.invert_yaxis()
     fig.autofmt_xdate()
-    plt.savefig(os.path.join(sample_data_path, str(experiment_index) + resource['resource'] + "_" +resource['type'] + '.svg'))
+    plt.savefig(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.svg'))
     #plt.show()
 
 
-def render_box_plot(sample_data_path, sample_run_list):
+def render_box_plot_chart(sample_data_path, key):
     large = 22; med = 16; small = 12
     params = {'axes.titlesize': large,
               'legend.fontsize': med,
@@ -415,9 +448,7 @@ def render_box_plot(sample_data_path, sample_run_list):
     print(mpl.__version__)  #> 3.0.0
     print(sns.__version__)  #> 0.9.0
 
-
-    # Import Data
-    df = pd.read_csv("./osm.csv")
+    df = pd.read_csv(os.path.join(sample_data_path, key+'.csv'))
 
     # Draw Plot
     fig = plt.figure(figsize=(13,10), dpi= 80)
@@ -439,7 +470,7 @@ def render_box_plot(sample_data_path, sample_run_list):
 
 
     # Decoration
-    plt.title('os-migrate execution times (root volume)', fontsize=22)
+    plt.title('key', fontsize=22)
     plt.legend(title='Volume usage (%)')
 
     #
@@ -455,7 +486,8 @@ def render_box_plot(sample_data_path, sample_run_list):
     #     plt.vlines(i+.5, 10, 45, linestyles='solid', colors='gray', alpha=0.2)
 
 
-    plt.show()
+    #plt.show()
+    plt.savefig(os.path.join(sample_data_path, key + '.svg'))
 
 
 if __name__ == "__main__":

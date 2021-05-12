@@ -1,16 +1,16 @@
 - name: Test preparation
   hosts: migrator
   tasks:
-    - name: seed pre workloads
-      ansible.builtin.include_tasks: seed_pre_workload.yml
+    - name: clean pre workloads
+      ansible.builtin.include_tasks: clean_pre_dst_workload.yml
       with_items: objs
-      # This loop means that we will create 8 resources when seeding the environment
+      # This loop means that we will create 8 resources when cleaning the environment
       loop: "{{ query('sequence', 'start=1 end={{ amount_resources }}') }}"
       loop_control:
         loop_var: loop_index
 
-    - name: seed workloads
-      ansible.builtin.include_tasks: seed_workload.yml
+    - name: clean workloads
+      ansible.builtin.include_tasks: clean_dst_workload.yml
       when: False
       with_items: objs
       loop: "{{ query('sequence', 'start=1 end={{ amount_resources }}') }}"

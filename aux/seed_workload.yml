@@ -1,6 +1,6 @@
-- name: Create osm_bench_volume {{ experiment }}_{{ loop_index }}
+- name: Create osm_bench_volume {{ loop_index }}
   openstack.cloud.volume:
-    display_name: osm_bench_volume_{{ experiment }}_{{ loop_index }}
+    display_name: osm_bench_volume_{{ loop_index }}
     size: 1
     auth: "{{ os_migrate_src_auth }}"
     validate_certs: "{{ os_migrate_src_validate_certs|default(omit) }}"
@@ -8,15 +8,15 @@
     client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
     client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
-- name: Create osm_bench_server {{ experiment }}_{{ loop_index }}
+- name: Create osm_bench_server {{ loop_index }}
   openstack.cloud.server:
-    name: osm_bench_server_{{ experiment }}_{{ loop_index }}
+    name: osm_bench_server_{{ loop_index }}
     state: present
     flavor: "{{ os_migrate_src_osm_server_flavor|default(m1.small) }}"
-    key_name: osm_bench_key_{{ experiment }}_{{ loop_index }}
+    key_name: osm_bench_key_{{ loop_index }}
     image: "{{ workload_image }}"
-    network: osm_bench_net_{{ experiment }}_{{ loop_index }}
-    security_groups: osm_bench_security_group_{{ experiment }}_{{ loop_index }}
+    network: osm_bench_net_{{ loop_index }}
+    security_groups: osm_bench_security_group_{{ loop_index }}
     volumes:
       - osm_bench_volume
     # We get a floating IP
@@ -31,10 +31,10 @@
     client_key: "{{ os_migrate_src_client_key|default(omit) }}"
 
 # In order to be able to migrate the VMS they must be turned off
-- name: Shutdown osm_bench_server {{ experiment }}_{{ loop_index }}
+- name: Shutdown osm_bench_server {{ loop_index }}
   openstack.cloud.server_action:
     auth: "{{ os_migrate_src_auth }}"
-    server: osm_bench_server_{{ experiment }}_{{ loop_index }}
+    server: osm_bench_server_{{ loop_index }}
     action: stop
     wait: yes
     validate_certs: "{{ os_migrate_src_validate_certs|default(omit) }}"

@@ -41,8 +41,8 @@ import warnings; warnings.filterwarnings(action='once')
 #
 # This means that we will execute the os-migrate to
 # migrate [a, b, c, d] amount of resources x times
-sample_iterations = 2
-sample_iterations_list = [1, 2]
+sample_iterations = 10
+sample_iterations_list = [2, 4, 8]
 
 sample_data_path = "./sample_data/"
 
@@ -61,14 +61,14 @@ sample_run_post = ["/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/cha
 sample_run_list = [
     {'resource': 'networks', 'type': 'export', 'playbook': 'export_networks.yml', 'graph': True},
     {'resource': 'networks', 'type': 'import', 'playbook': 'import_networks.yml', 'graph': True},
-    {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'graph': False},
-    {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'graph': False},
-    {'resource': 'routers', 'type': 'export', 'playbook': 'export_routers.yml', 'graph': False},
-    {'resource': 'routers', 'type': 'import', 'playbook': 'import_routers.yml', 'graph': False},
-    {'resource': 'security_groups', 'type': 'export', 'playbook': 'export_security_groups.yml', 'graph': False},
-    {'resource': 'security_groups', 'type': 'import', 'playbook': 'import_security_groups.yml', 'graph': False},
-    {'resource': 'security_group_rules', 'type': 'export', 'playbook': 'export_security_group_rules.yml', 'graph': False},
-    {'resource': 'security_group_rules', 'type': 'import', 'playbook': 'import_security_group_rules.yml', 'graph': False},
+    {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'graph': True},
+    {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'graph': True},
+    {'resource': 'routers', 'type': 'export', 'playbook': 'export_routers.yml', 'graph': True},
+    {'resource': 'routers', 'type': 'import', 'playbook': 'import_routers.yml', 'graph': True},
+    {'resource': 'security_groups', 'type': 'export', 'playbook': 'export_security_groups.yml', 'graph': True},
+    {'resource': 'security_groups', 'type': 'import', 'playbook': 'import_security_groups.yml', 'graph': True},
+    {'resource': 'security_group_rules', 'type': 'export', 'playbook': 'export_security_group_rules.yml', 'graph': True},
+    {'resource': 'security_group_rules', 'type': 'import', 'playbook': 'import_security_group_rules.yml', 'graph': True},
     {'resource': 'workloads', 'type': 'export', 'playbook': 'export_workloads.yml', 'graph': False},
     {'resource': 'workloads', 'type': 'import', 'playbook': 'import_workloads.yml', 'graph': False}
 ]
@@ -117,7 +117,7 @@ def render_boxplot_data():
     # We parse each resource to be exported
     for key in global_times:
         with open(os.path.join(sample_data_path, key+'.csv'), 'w') as the_file:
-            the_file.write('"usage","bw","execution_time","flavor"'+ "\n")
+            the_file.write('"usage","bw","execution_time","experiment"'+ "\n")
         for value in global_times[key]:
             for time in global_times[key][value]:
                 with open(os.path.join(sample_data_path, key+'.csv'), 'a') as the_file2:
@@ -430,64 +430,67 @@ def render_gantt_chart(sample_data_path, resource, experiment_index, amount_reso
 
 
 def render_box_plot_chart(sample_data_path, key):
-    large = 22; med = 16; small = 12
-    params = {'axes.titlesize': large,
-              'legend.fontsize': med,
-              'figure.figsize': (16, 10),
-              'axes.labelsize': med,
-              'axes.titlesize': med,
-              'xtick.labelsize': med,
-              'ytick.labelsize': med,
-              'figure.titlesize': large}
-    plt.rcParams.update(params)
-    plt.style.use('seaborn-whitegrid')
-    sns.set_style("white")
-    #%matplotlib inline
 
-    # Version
-    print(mpl.__version__)  #> 3.0.0
-    print(sns.__version__)  #> 0.9.0
+    if len(open(os.path.join(sample_data_path, key+'.csv')).readlines()) > 1:
 
-    df = pd.read_csv(os.path.join(sample_data_path, key+'.csv'))
+        large = 22; med = 16; small = 12
+        params = {'axes.titlesize': large,
+                  'legend.fontsize': med,
+                  'figure.figsize': (16, 10),
+                  'axes.labelsize': med,
+                  'axes.titlesize': med,
+                  'xtick.labelsize': med,
+                  'ytick.labelsize': med,
+                  'figure.titlesize': large}
+        plt.rcParams.update(params)
+        plt.style.use('seaborn-whitegrid')
+        sns.set_style("white")
+        #%matplotlib inline
 
-    # Draw Plot
-    fig = plt.figure(figsize=(13,10), dpi= 80)
+        # Version
+        print(mpl.__version__)  #> 3.0.0
+        print(sns.__version__)  #> 0.9.0
 
-    #
-    grid = plt.GridSpec(4, 4, hspace=0.5, wspace=0.2)
-    # Define the main axis
-    #ax_main = fig.add_subplot(grid[:-1, :-1])
+        df = pd.read_csv(os.path.join(sample_data_path, key+'.csv'))
 
+        # Draw Plot
+        fig = plt.figure(figsize=(13,10), dpi= 80)
 
-    ax = sns.boxplot(x='flavor', y='execution_time', data=df, hue='usage')
-    ax.set_yscale('log')
-    sns.stripplot(x='flavor', y='execution_time', data=df, color='black', size=3, jitter=1)
+        #
+        grid = plt.GridSpec(4, 4, hspace=0.5, wspace=0.2)
+        # Define the main axis
+        #ax_main = fig.add_subplot(grid[:-1, :-1])
 
 
-
-    for i in range(len(df['flavor'].unique())-1):
-        plt.vlines(i+.5, 10, 6000, linestyles='solid', colors='gray', alpha=0.2)
-
-
-    # Decoration
-    plt.title('key', fontsize=22)
-    plt.legend(title='Volume usage (%)')
-
-    #
-    # # # # THe bottom axis
-    # ax_bottom = fig.add_subplot(grid[-1, 0:-1], sharex = ax_main)
-    # sns.boxplot(x='flavor', y='bw', data=df, hue='usage')
-    #sns.stripplot(x='flavor', y='bw', data=df, color='black', size=3, jitter=1)
-    #sns.histplot(data=df, x="flavor", y='bw', hue='usage')
-
-    #ax_bottom.hist(df.bw, 40, histtype='stepfilled', orientation='vertical', color='deeppink')
-    # #
-    # for i in range(len(df['flavor'].unique())-1):
-    #     plt.vlines(i+.5, 10, 45, linestyles='solid', colors='gray', alpha=0.2)
+        ax = sns.boxplot(x='experiment', y='execution_time', data=df, hue='usage')
+        ax.set_yscale('log')
+        sns.stripplot(x='experiment', y='execution_time', data=df, color='black', size=3, jitter=1)
 
 
-    #plt.show()
-    plt.savefig(os.path.join(sample_data_path, key + '.svg'))
+
+        for i in range(len(df['experiment'].unique())-1):
+            plt.vlines(i+.5, 10, 6000, linestyles='solid', colors='gray', alpha=0.2)
+
+
+        # Decoration
+        plt.title(key, fontsize=22)
+        #plt.legend(title='Volume usage (%)')
+
+        #
+        # # # # THe bottom axis
+        # ax_bottom = fig.add_subplot(grid[-1, 0:-1], sharex = ax_main)
+        # sns.boxplot(x='experiment', y='bw', data=df, hue='usage')
+        #sns.stripplot(x='experiment', y='bw', data=df, color='black', size=3, jitter=1)
+        #sns.histplot(data=df, x="experiment", y='bw', hue='usage')
+
+        #ax_bottom.hist(df.bw, 40, histtype='stepfilled', orientation='vertical', color='deeppink')
+        # #
+        # for i in range(len(df['experiment'].unique())-1):
+        #     plt.vlines(i+.5, 10, 45, linestyles='solid', colors='gray', alpha=0.2)
+
+
+        #plt.show()
+        plt.savefig(os.path.join(sample_data_path, key + '.svg'))
 
 
 if __name__ == "__main__":

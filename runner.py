@@ -1,6 +1,28 @@
 #!/usr/bin/python3
 """os-migrate grapher script."""
 
+import datetime as dt
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import ansible_runner
+
+import matplotlib.dates as mdates
+import matplotlib.font_manager as font_manager
+import matplotlib.pyplot as plt
+
+import numpy as np
+
+import pandas as pd
+
+import seaborn as sns
+
+import yaml
+
 """
 ## Requirements:
 ## From this folder execute:
@@ -15,34 +37,13 @@ ln -sf $LATEST os_migrate-os_migrate-latest.tar.gz
 ansible-galaxy collection install --force os_migrate-os_migrate-latest.tar.gz
 """
 
-import os
-import tempfile
-import subprocess
-from pathlib import Path
-import sys, yaml, json;
-import ansible_runner
-import shutil
-
-import datetime as dt
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as font_manager
-import matplotlib.dates
-from matplotlib.dates import SECONDLY,WEEKLY,MONTHLY, DateFormatter, rrulewrapper, RRuleLocator
-import numpy as np
-import matplotlib.dates as mdates
-
-import pandas as pd
-import matplotlib as mpl
-import seaborn as sns
-import warnings; warnings.filterwarnings(action='once')
-
 #
 # How many times we will execute the experiments
 #
 # This means that we will execute the os-migrate to
 # migrate [a, b, c, d] amount of resources x times
-sample_iterations = 10
-sample_iterations_list = [1, 10, 20, 30, 40, 50]
+sample_iterations = 1
+sample_iterations_list = [1]
 
 sample_data_path = "./sample_data/"
 
@@ -50,7 +51,7 @@ sample_data_path = "./sample_data/"
 # Two lists of playbooks we will execute before and after the main run list executes
 # these lists are useful i.e. in the case of seeding an environment or cleaning up after.
 #
-sample_run_pre = [] # "/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/chart/aux/clean_dst.yml"]
+sample_run_pre = ["/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/chart/aux/clean_dst.yml"]
 sample_run_pre_experiments = ["/home/ccamacho/chart/aux/seed.yml"]
 sample_run_post_experiment = ["/home/ccamacho/chart/aux/clean_dst.yml"]
 sample_run_post = ["/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/chart/aux/clean_dst.yml"]
@@ -82,9 +83,8 @@ def main():
     for resource in sample_run_list:
         global_times[resource['type']+"_"+resource['resource']] = {}
         for amount_resources in sample_iterations_list:
-            global_times[resource['type']+"_"+resource['resource']][amount_resources]=[]
+            global_times[resource['type']+"_"+resource['resource']][amount_resources] = []
     print(global_times)
-
 
     clean_local_folders()
     run_extra_playbooks(sample_run_pre)
@@ -92,7 +92,6 @@ def main():
     for amount_resources in sample_iterations_list:
         # seed
         run_extra_playbooks(sample_run_pre_experiments, amount_resources)
-
 
         for resource in sample_run_list:
             if resource['graph']:
@@ -102,36 +101,34 @@ def main():
                     render_gantt_chart(sample_data_path, resource, experiment_index, amount_resources)
                     if resource['type'] == "import":
                         # We clean the destination tenant
-                        #run_extra_playbooks(sample_run_post_experiment, amount_resources)
-                        print("import")
+                        run_extra_playbooks(sample_run_post_experiment, amount_resources)
 
     render_boxplot_data()
     for key in global_times:
-        render_box_plot_chart(sample_data_path, key)
+        render_boxplot_chart(sample_data_path, key)
     # clean
     run_extra_playbooks(sample_run_post, max(sample_iterations_list))
-"""
-{'export_networks': {1: [], 2: []}, 'import_networks': {1: [], 2: []}, 'export_subnets': {1: [], 2: []}, 'import_subnets': {1: [], 2: []}, 'export_routers': {1: [], 2: []}, 'import_routers': {1: [], 2: []}, 'export_security_groups': {1: [], 2: []}, 'import_security_groups': {1: [], 2: []}, 'export_security_group_rules': {1: [], 2: []}, 'import_security_group_rules': {1: [], 2: []}, 'export_workloads': {1: [], 2: []}, 'import_workloads': {1: [], 2: []}}
 
-"""
+
 def render_boxplot_data():
     # We parse each resource to be exported
     for key in global_times:
         with open(os.path.join(sample_data_path, key+'.csv'), 'w') as the_file:
-            the_file.write('"usage","bw","execution_time","experiment"'+ "\n")
+            the_file.write('"type","execution_time","experiment"' + "\n")
         for value in global_times[key]:
             for time in global_times[key][value]:
                 with open(os.path.join(sample_data_path, key+'.csv'), 'a') as the_file2:
-                    the_file2.write("100,33," + str(time) + "," + str(value) + "\n")
+                    the_file2.write(str(value) + "," + str(time) + "," + str(value) + "\n")
+
 
 def clean_local_folders():
     private_data_dir = '/tmp/osm/'
     Path(private_data_dir).mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(private_data_dir, ignore_errors = True)
+    shutil.rmtree(private_data_dir, ignore_errors=True)
+
 
 def run_extra_playbooks(playbook_list, amount_resources=1):
     """Execute Ansible runner for additional playbooks."""
-
     local_inventory = {
         'hosts': {
             'migrator': {
@@ -153,7 +150,7 @@ def run_extra_playbooks(playbook_list, amount_resources=1):
     private_data_dir_osm = os.path.join(private_data_dir, 'osm-data/')
     private_data_dir_artifacts = os.path.join(private_data_dir, 'artifacts/')
 
-    shutil.rmtree(private_data_dir_artifacts, ignore_errors = True)
+    shutil.rmtree(private_data_dir_artifacts, ignore_errors=True)
 
     Path(os.path.join(home, 'os-migrate-data')).mkdir(parents=True, exist_ok=True)
     Path(private_data_dir_env).mkdir(parents=True, exist_ok=True)
@@ -163,7 +160,7 @@ def run_extra_playbooks(playbook_list, amount_resources=1):
     src_cloud = 'psisrc16'
     dst_cloud = 'psidst16'
     osm_collection_root = os.path.join(home, '.ansible/collections/ansible_collections/os_migrate/os_migrate')
-    osm_playbooks_root = os.path.join(osm_collection_root, 'playbooks')
+    # osm_playbooks_root = os.path.join(osm_collection_root, 'playbooks')
 
     val = subprocess.check_call("./os-migrate/scripts/auth-from-clouds.sh --config " + clouds + " --src " + src_cloud + " --dst " + dst_cloud + " > " + os.path.join(private_data_dir_env, 'extravars.yml'), shell=True)
 
@@ -220,6 +217,7 @@ def run_extra_playbooks(playbook_list, amount_resources=1):
         pre_runner_obj = None
         ansible_runner.utils.cleanup_artifact_dir(private_data_dir_artifacts, 1)
 
+
 def render_gantt_data(sample_data_path, resource, experiment_index, amount_resources):
     """Execute Ansible runner."""
     #
@@ -247,7 +245,7 @@ def render_gantt_data(sample_data_path, resource, experiment_index, amount_resou
     private_data_dir_osm = os.path.join(private_data_dir, 'osm-data/')
     private_data_dir_artifacts = os.path.join(private_data_dir, 'artifacts/')
 
-    shutil.rmtree(private_data_dir_artifacts, ignore_errors = True)
+    shutil.rmtree(private_data_dir_artifacts, ignore_errors=True)
 
     Path(os.path.join(home, 'os-migrate-data')).mkdir(parents=True, exist_ok=True)
     Path(private_data_dir_env).mkdir(parents=True, exist_ok=True)
@@ -299,7 +297,7 @@ def render_gantt_data(sample_data_path, resource, experiment_index, amount_resou
     #
 
     # There is a gantt chart per experiment
-    with open(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_"+ resource['resource'] + "_" +resource['type'] + '.txt'), 'w') as the_file2:
+    with open(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) + "_" + resource['resource'] + "_" + resource['type'] + '.txt'), 'w') as the_file2:
         the_file2.write('')
     kwargs = {
         'verbosity': 0,
@@ -313,9 +311,9 @@ def render_gantt_data(sample_data_path, resource, experiment_index, amount_resou
     runner_obj = ansible_runner.interface.init_runner(**kwargs)
     runner_obj.run()
 
-    stdout = runner_obj.stdout.read()
+    # stdout = runner_obj.stdout.read()
     events = list(runner_obj.events)
-    stats = runner_obj.stats
+    # stats = runner_obj.stats
     runner_obj = None
     ansible_runner.utils.cleanup_artifact_dir(private_data_dir_artifacts, 1)
 
@@ -361,139 +359,147 @@ def render_gantt_data(sample_data_path, resource, experiment_index, amount_resou
     # Playbooks execution begins
     #
 
+
 def _create_date(datetxt):
-    """Creates the date"""
-    day,month,year=datetxt.split('-')
+    """Create a date object."""
+    day, month, year = datetxt.split('-')
     date = dt.datetime.strptime(datetxt, '%Y-%m-%dT%H:%M:%S.%f')
-    mdate = matplotlib.dates.date2num(date)
+    mdate = mdates.date2num(date)
     return mdate
 
 
 def render_gantt_chart(sample_data_path, resource, experiment_index, amount_resources):
-    """
-        Create gantt charts with matplotlib
-        Give file name.
-    """
-    fname=os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.txt')
+    """Create a gantt chart with matplotlib."""
+    fname = os.path.join(sample_data_path, str(amount_resources) + "_" + str(experiment_index) + "_" + resource['resource'] + "_" + resource['type'] + '.txt')
     ylabels = []
-    customDates = []
+    customdates = []
     try:
         with open(fname, 'r') as gfile:
-            textlist=gfile.readlines()
-    except:
+            textlist = gfile.readlines()
+    except Exception as e:
+        print(e)
         return
 
     all_dates = []
 
     for tx in textlist:
         if not tx.startswith('#'):
-            ylabel,startdate,enddate=tx.split(',')
-            ylabels.append((ylabel[:25] + '..').replace('\n','') if len(ylabel) > 25 else ylabel.replace('\n',''))
-            customDates.append([_create_date(startdate.replace('\n','')),_create_date(enddate.replace('\n',''))])
-            all_dates.append(_create_date(startdate.replace('\n','')))
-            all_dates.append(_create_date(enddate.replace('\n','')))
-    ilen=len(ylabels)
-    pos = np.arange(0.5,ilen*0.5+0.5,0.5)
+            ylabel, startdate, enddate = tx.split(',')
+            ylabels.append((ylabel[:25] + '..').replace('\n', '') if len(ylabel) > 25 else ylabel.replace('\n', ''))
+            customdates.append([_create_date(startdate.replace('\n', '')), _create_date(enddate.replace('\n', ''))])
+            all_dates.append(_create_date(startdate.replace('\n', '')))
+            all_dates.append(_create_date(enddate.replace('\n', '')))
+    ilen = len(ylabels)
+    pos = np.arange(0.5, ilen*0.5+0.5, 0.5)
     task_dates = {}
-    for i,task in enumerate(ylabels):
-        task_dates[task] = customDates[i]
-    fig = plt.figure(figsize=(30,10))
+    for i, task in enumerate(ylabels):
+        task_dates[task] = customdates[i]
+    fig = plt.figure(figsize=(30, 10))
     ax = fig.add_subplot(111)
     for i in range(len(ylabels)):
-         start_date,end_date = task_dates[ylabels[i]]
-         ax.barh((i*0.5)+0.5, end_date - start_date, left=start_date, height=0.3, align='center', edgecolor='lightgreen', color='orange', alpha = 0.8)
-    locsy, labelsy = plt.yticks(pos,ylabels)
-    plt.setp(labelsy, fontsize = 14)
-#    ax.axis('tight')
-    ax.set_ylim(ymin = -0.1, ymax = ilen*0.5+0.5)
-    ax.grid(color = 'g', linestyle = ':')
+        start_date, end_date = task_dates[ylabels[i]]
+        ax.barh((i*0.5)+0.5, end_date - start_date, left=start_date, height=0.3, align='center', edgecolor='lightgreen', color='orange', alpha = 0.8)
+    locsy, labelsy = plt.yticks(pos, ylabels)
+    plt.setp(labelsy, fontsize=14)
+    # ax.axis('tight')
+    ax.set_ylim(ymin=-0.1, ymax=ilen*0.5+0.5)
+    ax.grid(color='g', linestyle=':')
     ax.xaxis_date()
 
     locator = mdates.AutoDateLocator(minticks=10, maxticks=15)
     formatter = mdates.ConciseDateFormatter(locator)
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
-    ax.set_xlim(min(all_dates),max(all_dates))
+    ax.set_xlim(min(all_dates), max(all_dates))
 
-    #plt.xticks(all_dates)
+    # plt.xticks(all_dates)
     labelsx = ax.get_xticklabels()
     plt.setp(labelsx, rotation=30, fontsize=10)
 
-    font = font_manager.FontProperties(size='small')
-    # No legend
-    #ax.legend(loc=1,prop=font)
+    font_manager.FontProperties(size='small')
 
     plt.title((resource['type']+" "+resource['resource'] + " (" + str(amount_resources)+"_"+str(experiment_index) + ")").upper())
     ax.invert_yaxis()
     fig.autofmt_xdate()
-    plt.savefig(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.svg'))
-    #plt.show()
+    dest_file = os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.svg')
+    print(dest_file)
+    plt.savefig(dest_file)
     plt.close(fig)
 
 
-def render_box_plot_chart(sample_data_path, key):
-
+def render_boxplot_chart(sample_data_path, key, use_logaritmic=False):
+    """Create a boxplot chart with matplotlib."""
     if len(open(os.path.join(sample_data_path, key+'.csv')).readlines()) > 1:
 
-        large = 22; med = 16; small = 12
+        large = 22
+        med = 16
         params = {'axes.titlesize': large,
                   'legend.fontsize': med,
                   'figure.figsize': (16, 10),
                   'axes.labelsize': med,
-                  'axes.titlesize': med,
                   'xtick.labelsize': med,
                   'ytick.labelsize': med,
                   'figure.titlesize': large}
         plt.rcParams.update(params)
         plt.style.use('seaborn-whitegrid')
         sns.set_style("white")
-        #%matplotlib inline
-
-        # Version
-        print(mpl.__version__)  #> 3.0.0
-        print(sns.__version__)  #> 0.9.0
 
         df = pd.read_csv(os.path.join(sample_data_path, key+'.csv'))
 
-        # Draw Plot
-        fig = plt.figure(figsize=(13,10), dpi= 80)
+        fig = plt.figure(figsize=(13, 10), dpi=80)
 
-        #
-        grid = plt.GridSpec(4, 4, hspace=0.5, wspace=0.2)
-        # Define the main axis
-        #ax_main = fig.add_subplot(grid[:-1, :-1])
+        plt.GridSpec(4, 4, hspace=0.5, wspace=0.2)
 
+        ax = sns.boxplot(x='experiment', y='execution_time', data=df, hue='type', fliersize=0)
+        if use_logaritmic:
+            ax.set_yscale('log')
 
-        ax = sns.boxplot(x='experiment', y='execution_time', data=df, hue='usage')
-        ax.set_yscale('log')
-        sns.stripplot(x='experiment', y='execution_time', data=df, color='black', size=3, jitter=1)
+        sns.stripplot(x='experiment', y='execution_time', data=df, hue='type', size=3, jitter=1, split=True, linewidth=1, edgecolor='gray')
 
-
+        # Remove the extra legend
+        handles, labels = ax.get_legend_handles_labels()
+        l = plt.legend(handles[0:2], labels[0:2], loc='best', shadow=True, title='Type')
 
         for i in range(len(df['experiment'].unique())-1):
-            plt.vlines(i+.5, 10, 6000, linestyles='solid', colors='gray', alpha=0.2)
+            plt.vlines(i+.5, 10, max(df['execution_time']), linestyles='solid', colors='gray', alpha=0.2)
 
+        plt.xlabel("Resources per experiment")
+        plt.ylabel("Execution time (seconds)")
 
-        # Decoration
         plt.title(key, fontsize=22)
-        #plt.legend(title='Volume usage (%)')
 
-        #
-        # # # # THe bottom axis
-        # ax_bottom = fig.add_subplot(grid[-1, 0:-1], sharex = ax_main)
-        # sns.boxplot(x='experiment', y='bw', data=df, hue='usage')
-        #sns.stripplot(x='experiment', y='bw', data=df, color='black', size=3, jitter=1)
-        #sns.histplot(data=df, x="experiment", y='bw', hue='usage')
-
-        #ax_bottom.hist(df.bw, 40, histtype='stepfilled', orientation='vertical', color='deeppink')
-        # #
-        # for i in range(len(df['experiment'].unique())-1):
-        #     plt.vlines(i+.5, 10, 45, linestyles='solid', colors='gray', alpha=0.2)
-
-
-        #plt.show()
-        plt.savefig(os.path.join(sample_data_path, key + '.svg'))
+        plt.savefig(os.path.join(sample_data_path, key + '.svg'), bbox_inches='tight')
         plt.close(fig)
 
+
 if __name__ == "__main__":
-    main()
+    # If we execute the script without parameters we will run Ansible runner
+    # We an re run the script to render the already generated data files to adjust the
+    # graphs without re-executing all the exepriments as they might take too much time.
+
+    if len(sys.argv) == 1:
+        main()
+    elif len(sys.argv) == 3:
+        type = sys.argv[1]
+        if type == "gantt" or type == "boxplot":
+            full_path = sys.argv[2]
+            if os.path.isfile(full_path):
+                path, file = os.path.split(full_path)
+                print("Calling the " + type + " graph method with:")
+                print(path)
+                print(file)
+                # Here we call the gantt chart function of the boxplot function
+                # To render the images again
+                if type == "gantt":
+                    resource = {'resource': file.split("_")[2], 'type': os.path.splitext(file.split("_")[3])[0]}
+                    render_gantt_chart(path, resource, file.split("_")[1], file.split("_")[0])
+                elif type == "boxplot":
+                    render_boxplot_chart(path, os.path.splitext(file)[0])
+            else:
+                print("Second argument must exist")
+        else:
+            print("First argument can be only gantt or boxplot")
+            exit()
+    else:
+        print("Unsupported parameters")
+        exit()

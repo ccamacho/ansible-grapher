@@ -42,7 +42,7 @@ import warnings; warnings.filterwarnings(action='once')
 # This means that we will execute the os-migrate to
 # migrate [a, b, c, d] amount of resources x times
 sample_iterations = 10
-sample_iterations_list = [2, 4, 8]
+sample_iterations_list = [1, 10, 20, 30, 40, 50]
 
 sample_data_path = "./sample_data/"
 
@@ -61,14 +61,14 @@ sample_run_post = ["/home/ccamacho/chart/aux/clean_src.yml", "/home/ccamacho/cha
 sample_run_list = [
     {'resource': 'networks', 'type': 'export', 'playbook': 'export_networks.yml', 'graph': True},
     {'resource': 'networks', 'type': 'import', 'playbook': 'import_networks.yml', 'graph': True},
-    {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'graph': True},
-    {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'graph': True},
-    {'resource': 'routers', 'type': 'export', 'playbook': 'export_routers.yml', 'graph': True},
-    {'resource': 'routers', 'type': 'import', 'playbook': 'import_routers.yml', 'graph': True},
-    {'resource': 'security_groups', 'type': 'export', 'playbook': 'export_security_groups.yml', 'graph': True},
-    {'resource': 'security_groups', 'type': 'import', 'playbook': 'import_security_groups.yml', 'graph': True},
-    {'resource': 'security_group_rules', 'type': 'export', 'playbook': 'export_security_group_rules.yml', 'graph': True},
-    {'resource': 'security_group_rules', 'type': 'import', 'playbook': 'import_security_group_rules.yml', 'graph': True},
+    {'resource': 'subnets', 'type': 'export', 'playbook': 'export_subnets.yml', 'graph': False},
+    {'resource': 'subnets', 'type': 'import', 'playbook': 'import_subnets.yml', 'graph': False},
+    {'resource': 'routers', 'type': 'export', 'playbook': 'export_routers.yml', 'graph': False},
+    {'resource': 'routers', 'type': 'import', 'playbook': 'import_routers.yml', 'graph': False},
+    {'resource': 'security_groups', 'type': 'export', 'playbook': 'export_security_groups.yml', 'graph': False},
+    {'resource': 'security_groups', 'type': 'import', 'playbook': 'import_security_groups.yml', 'graph': False},
+    {'resource': 'security_group_rules', 'type': 'export', 'playbook': 'export_security_group_rules.yml', 'graph': False},
+    {'resource': 'security_group_rules', 'type': 'import', 'playbook': 'import_security_group_rules.yml', 'graph': False},
     {'resource': 'workloads', 'type': 'export', 'playbook': 'export_workloads.yml', 'graph': False},
     {'resource': 'workloads', 'type': 'import', 'playbook': 'import_workloads.yml', 'graph': False}
 ]
@@ -102,7 +102,8 @@ def main():
                     render_gantt_chart(sample_data_path, resource, experiment_index, amount_resources)
                     if resource['type'] == "import":
                         # We clean the destination tenant
-                        run_extra_playbooks(sample_run_post_experiment, amount_resources)
+                        #run_extra_playbooks(sample_run_post_experiment, amount_resources)
+                        print("import")
 
     render_boxplot_data()
     for key in global_times:
@@ -427,6 +428,7 @@ def render_gantt_chart(sample_data_path, resource, experiment_index, amount_reso
     fig.autofmt_xdate()
     plt.savefig(os.path.join(sample_data_path, str(amount_resources)+"_"+str(experiment_index) +"_" + resource['resource'] + "_" +resource['type'] + '.svg'))
     #plt.show()
+    plt.close(fig)
 
 
 def render_box_plot_chart(sample_data_path, key):
@@ -491,7 +493,7 @@ def render_box_plot_chart(sample_data_path, key):
 
         #plt.show()
         plt.savefig(os.path.join(sample_data_path, key + '.svg'))
-
+        plt.close(fig)
 
 if __name__ == "__main__":
     main()

@@ -26,6 +26,7 @@
       volume: osm_bench_volume
   # The module will fail if server or volume don't exist.
   failed_when: false
+  ignore_errors: True
 
 - name: Remove osm_bench_server
   openstack.cloud.server:
@@ -44,6 +45,7 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: Remove osm_bench_server boot volume
   openstack.cloud.volume:
@@ -60,6 +62,7 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: Remove osm_bench_volume
   openstack.cloud.volume:
@@ -76,3 +79,4 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True

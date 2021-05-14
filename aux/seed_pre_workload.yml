@@ -19,6 +19,7 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: Create osm subnet {{ loop_index }}
   openstack.cloud.subnet:
@@ -34,6 +35,7 @@
         nexthop: 192.168.{{ loop_index }}.1
     validate_certs: "{{ item.validate_certs }}"
     ca_cert: "{{ item.ca_cert }}"
+    enable_dhcp: False
     client_cert: "{{ item.client_cert }}"
     client_key: "{{ item.client_key }}"
   loop:
@@ -42,6 +44,7 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: Create security group {{ loop_index }}
   openstack.cloud.security_group:
@@ -59,6 +62,7 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: Create security group rule {{ loop_index }}
   openstack.cloud.security_group_rule:
@@ -75,6 +79,7 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: create osm_bench_router {{ loop_index }}
   openstack.cloud.router:
@@ -96,18 +101,21 @@
       ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: Create the key folder {{ loop_index }}
   ansible.builtin.file:
     path: "{{ '~' | expanduser }}/ssh-ci"
     mode: 0700
     state: directory
+  ignore_errors: True
 
 - name: Generate a keypair for the migration {{ loop_index }}
   # This will not regenerate the key if
   # it already exists
   community.crypto.openssh_keypair:
     path: "{{ '~' | expanduser }}/ssh-ci/id_rsa"
+  ignore_errors: True
 
 - name: Create new keypair as osm_bench_key {{ loop_index }}
   openstack.cloud.keypair:
@@ -130,16 +138,19 @@
       ca_cert: "{{ os_migrate_dst_ca_cert|default(omit) }}"
       client_cert: "{{ os_migrate_dst_client_cert|default(omit) }}"
       client_key: "{{ os_migrate_dst_client_key|default(omit) }}"
+  ignore_errors: True
 
 - name: make sure test_inputs dir exists {{ loop_index }}
   ansible.builtin.file:
     path: "{{ os_migrate_tests_tmp_dir }}/test_inputs"
     state: directory
+  ignore_errors: True
 
 - name: fetch cirros image {{ loop_index }}
   ansible.builtin.get_url:
     url: https://download.cirros-cloud.net/0.4.0/cirros-0.4.0-x86_64-disk.img
     dest: "{{ os_migrate_tests_tmp_dir }}/test_inputs/cirros.img"
+  ignore_errors: True
 
 - name: create osm_bench_image {{ loop_index }}
   openstack.cloud.image:
@@ -155,3 +166,4 @@
     ca_cert: "{{ os_migrate_src_ca_cert|default(omit) }}"
     client_cert: "{{ os_migrate_src_client_cert|default(omit) }}"
     client_key: "{{ os_migrate_src_client_key|default(omit) }}"
+  ignore_errors: True
